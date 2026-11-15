@@ -280,6 +280,134 @@
           transition: none;
         }
       }
+
+      /* ===== 巻き戻し画面 ===== */
+      #rwBtn {
+        position: absolute;
+        top: calc(10px + env(safe-area-inset-top, 0px));
+        right: max(12px, env(safe-area-inset-right));
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.18);
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 18px;
+        line-height: 1;
+      }
+      #rw {
+        --tw: calc(100vw / 8.6);
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        display: none;
+        flex-direction: column;
+        color: #fff;
+        font-family: "Renner", system-ui, -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif;
+        background: repeating-linear-gradient(45deg, #151515 0 2px, #1e1e1e 2px 4px);
+        touch-action: none;
+      }
+      #rw.on {
+        display: flex;
+      }
+      #rwView {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        container-type: size;
+        display: grid;
+        place-items: center;
+      }
+      #rwTime {
+        position: absolute;
+        top: calc(14px + env(safe-area-inset-top, 0px));
+        right: max(14px, env(safe-area-inset-right));
+        font-size: 14px;
+        z-index: 1;
+        opacity: 0.85;
+      }
+      #rwStrip {
+        position: relative;
+        height: calc(var(--tw) * 0.75 + 38px);
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.55);
+        cursor: grab;
+      }
+      #rwTrack {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 100%;
+        width: max-content;
+        transition: transform 0.14s ease-out;
+      }
+      #rwTrack .th {
+        flex: 0 0 var(--tw);
+        transition: transform 0.14s ease-out;
+        filter: brightness(0.78);
+      }
+      #rwTrack .th.sel {
+        transform: scale(1.14);
+        filter: none;
+        z-index: 1;
+      }
+      #rwTrack canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 4 / 3;
+        border: 3px solid transparent;
+        background: #000;
+        image-rendering: auto;
+      }
+      #rwTrack .th.sel canvas {
+        border-color: #3fd8ff;
+        box-shadow: 0 0 14px rgba(63, 216, 255, 0.7);
+      }
+      #rwBar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 22px;
+        padding: 6px max(18px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom, 0px))
+          max(18px, env(safe-area-inset-left));
+        background: #000;
+        font-size: 13px;
+      }
+      #rwBar .hint {
+        margin-right: auto;
+        opacity: 0.8;
+      }
+      #rwBar button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 8px;
+        border: 0;
+        background: transparent;
+        color: #fff;
+        font-size: 13px;
+      }
+      #rw kbd {
+        pointer-events: none;
+        display: inline-grid;
+        place-items: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 4px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        font: inherit;
+        font-size: 11px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #rwTrack,
+        #rwTrack .th {
+          transition: none;
+        }
+      }
     </style>
   </head>
   <body>
@@ -291,6 +419,18 @@
       </div>
     </main>
     <div id="toast" role="status"></div>
+    <div id="rw" aria-hidden="true">
+      <div id="rwView">
+        <div id="rwTime"></div>
+        <canvas id="rwCv" width="256" height="224"></canvas>
+      </div>
+      <div id="rwStrip"><div id="rwTrack"></div></div>
+      <div id="rwBar">
+        <span class="hint"><kbd>←</kbd> <kbd>→</kbd> えらぶ</span>
+        <button id="rwCancel" type="button">もどる</button>
+        <button id="rwOk" type="button">決定</button>
+      </div>
+    </div>
     <div id="tp" aria-hidden="true">
       <div id="dpad" class="pad">
         <b data-b="UP"></b><b data-b="DOWN"></b><b data-b="LEFT"></b><b data-b="RIGHT"></b>
@@ -298,6 +438,7 @@
       <div id="face" class="pad">
         <b data-b="X">X</b><b data-b="Y">Y</b><b data-b="A">A</b><b data-b="B">B</b>
       </div>
+      <button id="rwBtn" type="button" aria-label="巻き戻し">&#9194;</button>
       <b class="sh l" data-b="L">L</b><b class="sh r" data-b="R">R</b>
       <div id="ss"><b data-b="SELECT">Select</b><b data-b="START">Start</b></div>
     </div>
@@ -1173,6 +1314,21 @@ run();
           gain = null,
           nextT = 0,
           lastSram = "";
+        // ---- 巻き戻し用の履歴 ----
+        var SNAP_EVERY = 30, // 30フレーム(約0.5秒)ごとに記録
+          SNAP_MAX = 120, // 最大120個(約60秒分)
+          SNAP_MAX_BYTES = 120 * 1024 * 1024;
+        var snaps = [],
+          snapBytes = 0,
+          sinceSnap = 0,
+          rewinding = false,
+          rwList = [],
+          rwSel = 0,
+          rwSince = 0,
+          rwPresent = null,
+          padPrev = {},
+          padDir = 0,
+          padNext = 0;
 
         var store = {
           get: function (k) {
@@ -1318,6 +1474,42 @@ run();
           cx.putImageData(img, 0, 0, 0, 0, w, h);
         }
 
+        function grabState() {
+          var p = M._saveState();
+          if (!p) return null;
+          var u = M.HEAPU8.slice(p, p + M._getStateSaveSize());
+          M._my_free(p);
+          return u;
+        }
+        function putState(u) {
+          var p = M._my_malloc(u.length),
+            ok;
+          M.HEAPU8.set(u, p);
+          ok = M._loadState(p, u.length);
+          M._my_free(p);
+          return ok;
+        }
+        function grabShot() {
+          var c = document.createElement("canvas");
+          c.width = cv.width;
+          c.height = cv.height;
+          c.getContext("2d").drawImage(cv, 0, 0);
+          return c;
+        }
+        function clearSnaps() {
+          snaps = [];
+          snapBytes = 0;
+          sinceSnap = 0;
+        }
+        function pushSnap() {
+          var u = grabState();
+          if (!u) return;
+          snaps.push({ s: u, c: grabShot() });
+          snapBytes += u.length;
+          while (snaps.length > SNAP_MAX || snapBytes > SNAP_MAX_BYTES)
+            snapBytes -= snaps.shift().s.length;
+        }
+
         function step() {
           M._setJoypadInput(pollPad());
           M._mainLoop();
@@ -1326,7 +1518,8 @@ run();
         }
         function tick(t) {
           requestAnimationFrame(tick);
-          if (!running || paused) {
+          padRewind(t);
+          if (!running || paused || rewinding) {
             last = t;
             return;
           }
@@ -1340,7 +1533,14 @@ run();
             frames++;
           }
           if (acc > FRAME * 3) acc = 0;
-          if (n) draw();
+          if (n) {
+            draw();
+            sinceSnap += n;
+            if (sinceSnap >= SNAP_EVERY) {
+              sinceSnap = 0;
+              pushSnap();
+            }
+          }
           if (t - fpsT >= 1000) {
             status(romName + "　" + frames + " fps");
             frames = 0;
@@ -1383,6 +1583,7 @@ run();
           } catch (e) {}
         }
         function boot() {
+          clearSnaps();
           M._startWithRom(romPtr, romLen, 0);
           restoreSram();
           acc = 0;
@@ -1392,6 +1593,7 @@ run();
           candN = 0;
         }
         async function openRom(file) {
+          if (rewinding) closeRewind(false);
           var u = new Uint8Array(await file.arrayBuffer());
           if (u.length % 1024 === 512) u = u.subarray(512);
           if (u.length < 0x8000) {
@@ -1444,6 +1646,7 @@ run();
           M.HEAPU8.set(u, p);
           var ok = M._loadState(p, u.length);
           M._my_free(p);
+          if (ok) clearSnaps();
           toast(ok ? "ステートをロードしました" : "ステートをロードできませんでした");
         }
         function togglePause() {
@@ -1456,6 +1659,217 @@ run();
             last = performance.now();
           }
         }
+
+        // ================= 巻き戻し画面 =================
+        var rwEl = $("rw"),
+          rwTrack = $("rwTrack"),
+          rwStrip = $("rwStrip"),
+          rwCv = $("rwCv");
+        function rwShow(instant) {
+          var th = rwTrack.children,
+            i,
+            it = rwList[rwSel],
+            el = th[rwSel];
+          for (i = 0; i < th.length; i++) th[i].classList.toggle("sel", i === rwSel);
+          if (rwCv.width !== it.c.width || rwCv.height !== it.c.height) {
+            rwCv.width = it.c.width;
+            rwCv.height = it.c.height;
+          }
+          rwCv.getContext("2d").drawImage(it.c, 0, 0);
+          var last = rwList.length - 1;
+          $("rwTime").textContent =
+            rwSel === last
+              ? "現在"
+              : "−" + ((rwSince + (last - 1 - rwSel) * SNAP_EVERY) / 60).toFixed(1) + "秒";
+          if (instant) rwTrack.style.transition = "none";
+          rwTrack.style.transform =
+            "translateX(" + (rwStrip.clientWidth / 2 - (el.offsetLeft + el.offsetWidth / 2)) + "px)";
+          if (instant) {
+            void rwTrack.offsetWidth;
+            rwTrack.style.transition = "";
+          }
+        }
+        function rwMove(d) {
+          var n = Math.max(0, Math.min(rwList.length - 1, rwSel + d));
+          if (n !== rwSel) {
+            rwSel = n;
+            rwShow();
+          }
+        }
+        function openRewind() {
+          if (!running || rewinding) return;
+          if (!snaps.length) {
+            toast("まだ巻き戻せる履歴がありません");
+            return;
+          }
+          var u = grabState();
+          if (!u) return;
+          rwPresent = { s: u, c: grabShot() };
+          rwList = snaps.concat([rwPresent]);
+          rwSince = sinceSnap;
+          rewinding = true;
+          held = 0;
+          ptrs = {};
+          recalc();
+          rwTrack.textContent = "";
+          rwList.forEach(function (it, i) {
+            var d = document.createElement("div"),
+              c = document.createElement("canvas");
+            d.className = "th";
+            d.dataset.i = i;
+            c.width = 128;
+            c.height = 96;
+            c.getContext("2d").drawImage(it.c, 0, 0, 128, 96);
+            d.appendChild(c);
+            rwTrack.appendChild(d);
+          });
+          rwSel = rwList.length - 1;
+          rwEl.classList.add("on");
+          rwEl.setAttribute("aria-hidden", "false");
+          rwShow(true);
+        }
+        function closeRewind(ok) {
+          if (!rewinding) return;
+          var it = rwList[rwSel],
+            k;
+          if (ok && it !== rwPresent) {
+            if (putState(it.s)) {
+              // 選んだ時点より後の履歴は捨てる
+              k = snaps.indexOf(it);
+              if (k >= 0) {
+                snaps.length = k + 1;
+                snapBytes = 0;
+                snaps.forEach(function (x) {
+                  snapBytes += x.s.length;
+                });
+              }
+              sinceSnap = 0;
+              paused = false;
+              toast("巻き戻しました");
+            } else {
+              putState(rwPresent.s);
+              toast("巻き戻せませんでした");
+            }
+          }
+          rewinding = false;
+          rwList = [];
+          rwPresent = null;
+          rwTrack.textContent = "";
+          rwEl.classList.remove("on");
+          rwEl.setAttribute("aria-hidden", "true");
+          held = 0;
+          acc = 0;
+          nextT = 0;
+          last = performance.now();
+        }
+        function rwKey(e) {
+          var c = e.code;
+          if (c === "ArrowLeft") rwMove(-1);
+          else if (c === "ArrowRight") rwMove(1);
+          else if (e.repeat) return e.preventDefault();
+          else if (c === "KeyZ" || c === "Escape" || c === "Backspace" || c === "KeyE") closeRewind(false);
+          else if (c === "KeyX" || c === "Enter" || c === "Space") closeRewind(true);
+          e.preventDefault();
+        }
+        // ゲームパッド: ZL+ZR(L2+R2)で開く / 十字キー・スティックで選択 / A 決定 / B もどる
+        function padRewind(t) {
+          var pads = navigator.getGamepads ? navigator.getGamepads() : [],
+            g = null,
+            i;
+          for (i = 0; i < pads.length; i++)
+            if (pads[i] && pads[i].connected) {
+              g = pads[i];
+              break;
+            }
+          if (!g) {
+            padPrev = {};
+            return;
+          }
+          var bt = function (n) {
+            return !!(g.buttons[n] && g.buttons[n].pressed);
+          };
+          var cur = {
+            zl: bt(6),
+            zr: bt(7),
+            l: bt(14) || g.axes[0] < -0.5,
+            r: bt(15) || g.axes[0] > 0.5,
+            a: bt(1),
+            b: bt(0),
+          };
+          if (!rewinding) {
+            if (cur.zl && cur.zr && !(padPrev.zl && padPrev.zr)) openRewind();
+          } else if (cur.a && !padPrev.a) closeRewind(true);
+          else if (cur.b && !padPrev.b) closeRewind(false);
+          else {
+            var d = cur.l ? -1 : cur.r ? 1 : 0;
+            if (!d) padDir = 0;
+            else if (d !== padDir) {
+              padDir = d;
+              padNext = t + 350;
+              rwMove(d);
+            } else if (t >= padNext) {
+              padNext = t + 70;
+              rwMove(d);
+            }
+          }
+          padPrev = cur;
+        }
+        $("rwBtn").onclick = openRewind;
+        $("rwCancel").onclick = function () {
+          closeRewind(false);
+        };
+        $("rwOk").onclick = function () {
+          closeRewind(true);
+        };
+        // タッチ/マウス: サムネをタップで選択(選択中をもう一度タップで決定)、横ドラッグでスクロール
+        var drag = null;
+        rwStrip.addEventListener("pointerdown", function (e) {
+          drag = { x: e.clientX, i: rwSel, moved: false };
+          try {
+            rwStrip.setPointerCapture(e.pointerId);
+          } catch (x) {}
+        });
+        rwStrip.addEventListener("pointermove", function (e) {
+          if (!drag || !rewinding) return;
+          var dx = e.clientX - drag.x;
+          if (Math.abs(dx) > 8) drag.moved = true;
+          if (drag.moved) {
+            var ch = rwTrack.children,
+              w = ch.length > 1 ? ch[1].offsetLeft - ch[0].offsetLeft : 100,
+              n = Math.max(0, Math.min(rwList.length - 1, drag.i - Math.round(dx / w)));
+            if (n !== rwSel) {
+              rwSel = n;
+              rwShow();
+            }
+          }
+        });
+        ["pointerup", "pointercancel"].forEach(function (n) {
+          rwStrip.addEventListener(n, function (e) {
+            var d = drag;
+            drag = null;
+            if (!d || d.moved || n === "pointercancel" || !rewinding) return;
+            var t = document.elementFromPoint(e.clientX, e.clientY),
+              th = t && t.closest && t.closest(".th");
+            if (!th) return;
+            var i = +th.dataset.i;
+            if (i === rwSel) closeRewind(true);
+            else {
+              rwSel = i;
+              rwShow();
+            }
+          });
+        });
+        rwEl.addEventListener(
+          "wheel",
+          function (e) {
+            e.preventDefault();
+            rwMove((e.deltaY || e.deltaX) > 0 ? 1 : -1);
+          },
+          { passive: false },
+        );
+        rwEl.addEventListener("contextmenu", function (e) {
+          e.preventDefault();
+        });
 
         $("pick2").onclick = function () {
           $("file").click();
@@ -1499,12 +1913,14 @@ run();
         });
         window.addEventListener("keydown", function (e) {
           if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT") return;
+          if (rewinding) return rwKey(e);
           if (KEYS[e.code]) {
             held |= KEYS[e.code];
             e.preventDefault();
           } else if (e.code === "Digit1" && !e.repeat) saveState();
           else if (e.code === "Digit2" && !e.repeat) loadState();
           else if (e.repeat) return;
+          else if (e.code === "KeyE") openRewind();
           else if (e.code === "KeyP") togglePause();
           else if (e.code === "KeyO") $("file").click();
           else if (e.code === "KeyR") resetGame();
