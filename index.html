@@ -5,16 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <title>SNES エミュレータ</title>
     <style>
+      @font-face {
+  font-family: "Renner"; /* 任意のフォント名 */
+  src: url("Renner.ttf") format("truetype");
+      
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap; /* 読み込み中も代替フォントで文字を表示する */
+}
+
       :root {
         --bg: #dcd8d2;
         --panel: #eceae6;
         --ink: #25222b;
         --muted: #6c6874;
         --line: #ffffff;
-        --accent: #5b4a9c;
+        --accent: #ffffff;
         --on-accent: #fff;
         --screen: #000;
         box-sizing: border-box;
+        font-family:"Renner";
         padding-top: env(safe-area-inset-top, 0px);
         padding-bottom: env(safe-area-inset-bottom, 0px);
       }
@@ -22,11 +32,11 @@
         :root:not([data-theme="light"]) {
           --bg: #1b1a20;
           --panel: #25232c;
-          --ink: #ebe8f2;
+          --ink: #ffffff;
           --muted: #9a96a6;
           --line: #3a3745;
-          --accent: #a493e8;
-          --on-accent: #17142a;
+          --accent: #000000;
+          --on-accent: #ffffff;
           color-scheme: dark;
         }
       }
@@ -36,7 +46,7 @@
         --ink: #ebe8f2;
         --muted: #9a96a6;
         --line: #3a3745;
-        --accent: #a493e8;
+        --accent: #fdfdfd;
         --on-accent: #17142a;
         color-scheme: dark;
       }
@@ -60,13 +70,7 @@
         margin: 0;
         background: #000;
         color: var(--ink);
-        font:
-          15px/1.6 "Hiragino Sans",
-          "Hiragino Kaku Gothic ProN",
-          "Yu Gothic UI",
-          "Noto Sans JP",
-          system-ui,
-          sans-serif;
+        
       }
       main {
         height: 100%;
