@@ -129,6 +129,7 @@
       #tp {
         --u: clamp(56px, 17vmin, 88px);
         --pad: max(16px, env(safe-area-inset-left));
+        --padr: max(16px, env(safe-area-inset-right));
         position: fixed;
         inset: 0;
         display: none;
@@ -145,8 +146,7 @@
         -webkit-user-select: none;
         -webkit-touch-callout: none;
       }
-      #tp b,
-      #dpad {
+      #tp b {
         position: absolute;
         display: grid;
         place-items: center;
@@ -156,55 +156,83 @@
         font-size: calc(var(--u) * 0.36);
       }
       #tp b.p {
-        background: rgba(255, 255, 255, 0.42);
+        background: rgba(255, 255, 255, 0.45);
+      }
+      /* 十字キーとABXYは同じ「4つの丸」構成。指の接触円とのあたり判定で、スライド・同時押しに対応 */
+      #tp .pad {
+        position: absolute;
+        width: calc(var(--u) * 3.2);
+        height: calc(var(--u) * 3.2);
+        bottom: calc(var(--u) * 0.4 + env(safe-area-inset-bottom));
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.06);
       }
       #dpad {
         left: var(--pad);
-        bottom: calc(var(--u) * 0.5 + env(safe-area-inset-bottom));
-        width: calc(var(--u) * 2.8);
-        height: calc(var(--u) * 2.8);
-        border-radius: 50%;
       }
       #face {
-        position: absolute;
-        right: var(--pad);
-        bottom: calc(var(--u) * 0.5 + env(safe-area-inset-bottom));
-        width: calc(var(--u) * 2.8);
-        height: calc(var(--u) * 2.8);
-        pointer-events: none;
+        right: var(--padr);
       }
-      #face b {
+      #tp .pad b {
         width: var(--u);
         height: var(--u);
         border-radius: 50%;
+        pointer-events: none;
       }
-      #face .x {
-        left: calc(var(--u) * 0.9);
-        top: 0;
+      #tp .pad [data-b="UP"],
+      #tp .pad [data-b="X"] {
+        left: calc(var(--u) * 1.1);
+        top: calc(var(--u) * 0.2);
       }
-      #face .y {
-        left: 0;
-        top: calc(var(--u) * 0.9);
+      #tp .pad [data-b="DOWN"],
+      #tp .pad [data-b="B"] {
+        left: calc(var(--u) * 1.1);
+        top: calc(var(--u) * 2);
       }
-      #face .a {
-        right: 0;
-        top: calc(var(--u) * 0.9);
+      #tp .pad [data-b="LEFT"],
+      #tp .pad [data-b="Y"] {
+        left: calc(var(--u) * 0.2);
+        top: calc(var(--u) * 1.1);
       }
-      #face .b {
-        left: calc(var(--u) * 0.9);
-        bottom: 0;
+      #tp .pad [data-b="RIGHT"],
+      #tp .pad [data-b="A"] {
+        left: calc(var(--u) * 2);
+        top: calc(var(--u) * 1.1);
+      }
+      #dpad b::before {
+        content: "";
+        width: 0;
+        height: 0;
+        border-style: solid;
+        border-color: transparent;
+      }
+      #dpad [data-b="UP"]::before {
+        border-width: 0 calc(var(--u) * 0.17) calc(var(--u) * 0.26);
+        border-bottom-color: currentColor;
+      }
+      #dpad [data-b="DOWN"]::before {
+        border-width: calc(var(--u) * 0.26) calc(var(--u) * 0.17) 0;
+        border-top-color: currentColor;
+      }
+      #dpad [data-b="LEFT"]::before {
+        border-width: calc(var(--u) * 0.17) calc(var(--u) * 0.26) calc(var(--u) * 0.17) 0;
+        border-right-color: currentColor;
+      }
+      #dpad [data-b="RIGHT"]::before {
+        border-width: calc(var(--u) * 0.17) 0 calc(var(--u) * 0.17) calc(var(--u) * 0.26);
+        border-left-color: currentColor;
       }
       #tp .sh {
         width: calc(var(--u) * 1.6);
         height: calc(var(--u) * 0.7);
         border-radius: calc(var(--u) * 0.2);
-        bottom: calc(var(--u) * 3.5 + env(safe-area-inset-bottom));
+        bottom: calc(var(--u) * 4 + env(safe-area-inset-bottom));
       }
       #tp .sh.l {
         left: var(--pad);
       }
       #tp .sh.r {
-        right: var(--pad);
+        right: var(--padr);
       }
       #ss {
         position: absolute;
@@ -240,130 +268,6 @@
         opacity: 1;
       }
       @media (prefers-reduced-motion: reduce) {
-        #tp {
-          position: fixed;
-          inset: 0;
-          display: none;
-          pointer-events: none;
-          z-index: 5;
-        }
-        #tp.on {
-          display: block;
-        }
-        #tp * {
-          pointer-events: auto;
-          touch-action: none;
-          user-select: none;
-          -webkit-user-select: none;
-          -webkit-touch-callout: none;
-        }
-        #tp b {
-          position: absolute;
-          display: grid;
-          place-items: center;
-          font-weight: 700;
-          color: #fff;
-          background: rgba(255, 255, 255, 0.16);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-        }
-        #tp b.p {
-          background: rgba(255, 255, 255, 0.4);
-        }
-        #dpad {
-          position: absolute;
-          left: max(14px, env(safe-area-inset-left));
-          bottom: calc(28px + env(safe-area-inset-bottom));
-          width: 132px;
-          height: 132px;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.12);
-          border: 1px solid rgba(255, 255, 255, 0.28);
-        }
-        #dpad::before,
-        #dpad::after {
-          content: "";
-          position: absolute;
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 8px;
-          pointer-events: none;
-        }
-        #dpad::before {
-          left: 10%;
-          right: 10%;
-          top: 38%;
-          bottom: 38%;
-        }
-        #dpad::after {
-          top: 10%;
-          bottom: 10%;
-          left: 38%;
-          right: 38%;
-        }
-        #face {
-          position: absolute;
-          right: max(14px, env(safe-area-inset-right));
-          bottom: calc(28px + env(safe-area-inset-bottom));
-          width: 150px;
-          height: 150px;
-          pointer-events: none;
-        }
-        #face b {
-          width: 54px;
-          height: 54px;
-          border-radius: 50%;
-        }
-        #face .x {
-          left: 48px;
-          top: 0;
-          background: rgba(58, 111, 196, 0.55);
-        }
-        #face .y {
-          left: 0;
-          top: 48px;
-          background: rgba(58, 157, 93, 0.55);
-        }
-        #face .a {
-          right: 0;
-          top: 48px;
-          background: rgba(201, 60, 60, 0.55);
-        }
-        #face .b {
-          left: 48px;
-          bottom: 0;
-          background: rgba(217, 164, 33, 0.55);
-        }
-        #face b.p {
-          filter: brightness(1.5);
-        }
-        #tp .sh {
-          width: 76px;
-          height: 42px;
-          border-radius: 10px;
-          bottom: calc(196px + env(safe-area-inset-bottom));
-        }
-        #tp .sh.l {
-          left: max(14px, env(safe-area-inset-left));
-        }
-        #tp .sh.r {
-          right: max(14px, env(safe-area-inset-right));
-        }
-        #ss {
-          position: absolute;
-          left: 50%;
-          transform: translateX(-50%);
-          bottom: calc(14px + env(safe-area-inset-bottom));
-          display: flex;
-          gap: 10px;
-          pointer-events: none;
-        }
-        #ss b {
-          position: static;
-          width: 76px;
-          height: 32px;
-          border-radius: 16px;
-          font-size: 0.75rem;
-        }
         #toast {
           transition: none;
         }
@@ -380,10 +284,11 @@
     </main>
     <div id="toast" role="status"></div>
     <div id="tp" aria-hidden="true">
-      <div id="dpad"></div>
-      <div id="face">
-        <b class="x" data-b="X">X</b><b class="y" data-b="Y">Y</b><b class="a" data-b="A">A</b
-        ><b class="b" data-b="B">B</b>
+      <div id="dpad" class="pad">
+        <b data-b="UP"></b><b data-b="DOWN"></b><b data-b="LEFT"></b><b data-b="RIGHT"></b>
+      </div>
+      <div id="face" class="pad">
+        <b data-b="X">X</b><b data-b="Y">Y</b><b data-b="A">A</b><b data-b="B">B</b>
       </div>
       <b class="sh l" data-b="L">L</b><b class="sh r" data-b="R">R</b>
       <div id="ss"><b data-b="SELECT">Select</b><b data-b="START">Start</b></div>
@@ -1629,38 +1534,46 @@ run();
         }, 5000);
 
         var tp = $("tp");
+        // 指の接触円（ボタン半径の THUMB 倍）とボタン円が重なったボタンを押下扱いにする。
+        // 隣り合う2つの丸の境目に親指がかかると同時押し、スライドすると押下ボタンが連続的に移り変わる。
+        var THUMB = 0.72;
+        function padHits(pad, px, py, on) {
+          var bs = pad.querySelectorAll("[data-b]"),
+            i,
+            r,
+            rad,
+            dx,
+            dy;
+          for (i = 0; i < bs.length; i++) {
+            r = bs[i].getBoundingClientRect();
+            rad = r.width / 2;
+            dx = px - (r.left + rad);
+            dy = py - (r.top + r.height / 2);
+            if (Math.sqrt(dx * dx + dy * dy) < rad * (1 + THUMB)) on[bs[i].dataset.b] = 1;
+          }
+        }
         function recalc() {
           var m = 0,
             on = {},
             id,
             o,
-            el,
-            r,
-            dx,
-            dy;
+            n;
           for (id in ptrs) {
             o = ptrs[id];
-            el = o.el;
-            if (el.id === "dpad") {
-              r = el.getBoundingClientRect();
-              dx = (o.x - r.left - r.width / 2) / (r.width / 2);
-              dy = (o.y - r.top - r.height / 2) / (r.height / 2);
-              if (dx < -0.3) m |= MASK.LEFT;
-              if (dx > 0.3) m |= MASK.RIGHT;
-              if (dy < -0.3) m |= MASK.UP;
-              if (dy > 0.3) m |= MASK.DOWN;
-            } else {
-              m |= MASK[el.dataset.b];
-              on[el.dataset.b] = 1;
-            }
+            if (o.el.classList.contains("pad")) padHits(o.el, o.x, o.y, on);
+            else on[o.el.dataset.b] = 1;
           }
+          // 反対方向は物理的に押せないので、同時入力は打ち消す
+          if (on.LEFT && on.RIGHT) on.LEFT = on.RIGHT = 0;
+          if (on.UP && on.DOWN) on.UP = on.DOWN = 0;
+          for (n in on) if (on[n]) m |= MASK[n];
           touchHeld = m;
           Array.prototype.forEach.call(tp.querySelectorAll("[data-b]"), function (b) {
             b.classList.toggle("p", !!on[b.dataset.b]);
           });
         }
         tp.addEventListener("pointerdown", function (e) {
-          var el = e.target.closest("[data-b],#dpad");
+          var el = e.target.closest("[data-b],.pad");
           if (!el) return;
           e.preventDefault();
           try {
